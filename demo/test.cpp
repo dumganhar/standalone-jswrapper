@@ -8,11 +8,15 @@
 
 #include "auto/jsb_demo_auto.h"
 
+#include <test_main.h>
+
 #if _WIN32
 #include <direct.h> // _getcwd
 #endif
 
 int main(int argc, char **argv) {
+    main_entry();
+
     std::string scriptPath = "hello.js";
 
     if (argc > 1) {

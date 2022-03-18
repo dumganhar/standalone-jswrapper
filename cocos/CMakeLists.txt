@@ -8,9 +8,10 @@ if(WINDOWS)
    add_definitions(-DCC_STATIC=1)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 
 include(${CMAKE_CURRENT_LIST_DIR}/external/CMakeLists.txt)
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/base ccbase)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/jswrapper ccjswrapper)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/reflection ccreflection)

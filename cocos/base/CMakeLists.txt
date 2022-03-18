@@ -4,7 +4,9 @@ project(ccbase CXX)
 
 set(module_name ccbase)
 
-add_library(${module_name}
+set(base_sources)
+
+list(APPEND base_sources
     include/base/Any.h
     include/base/Log.h
     include/base/Macros.h
@@ -16,5 +18,10 @@ add_library(${module_name}
     src/Log.cpp
     src/Data.cpp
 )
+
+source_group(TREE ${CMAKE_CURRENT_LIST_DIR} PREFIX "Source Files" FILES ${base_sources})
+
+add_library(${module_name} ${base_sources})
+
 target_include_directories(${module_name} PUBLIC include)
 

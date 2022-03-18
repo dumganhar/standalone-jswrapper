@@ -18,7 +18,7 @@ add_executable(demo
    demo/test.cpp
 )
 
-target_link_libraries(demo ccbindings)
+target_link_libraries(demo ccbindings ccreflection)
 
 set(target_name demo)
 

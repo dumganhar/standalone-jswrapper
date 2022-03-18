@@ -114,6 +114,8 @@ list(APPEND jswrapper_source
     src/ValueArrayPool.cpp
 )
 
+source_group(TREE ${CMAKE_CURRENT_LIST_DIR} PREFIX "Source Files" FILES ${jswrapper_source})
+
 add_library(${module_name} ${jswrapper_source})
 
 target_link_libraries(${module_name} PUBLIC

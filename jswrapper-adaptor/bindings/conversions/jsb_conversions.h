@@ -30,11 +30,10 @@
 #include <functional>
 #include <type_traits>
 #include <utility>
-#include "base/Any.h"
-#include <optional>
+
 #include "base/Ptr.h"
 #include "base/RefCounted.h"
-#include <variant>
+
 #include "jsb_classtype.h"
 #include "jswrapper/HandleObject.h"
 #include "jswrapper/SeApi.h"
@@ -603,23 +602,13 @@ struct HolderType<std::function<R(ARGS...)>, true> {
 
 ///////////////////////////////////convertion//////////////////////////////////////////////////////////
 
-////////////////// optional
-template <typename T, typename Enable = void>
-struct is_optional : std::false_type {}; // NOLINT
 
-template <typename T>
-struct is_optional<std::optional<T>> : std::true_type {}; // NOLINT
-
-template <typename... Args>
-struct is_variant : std::false_type {}; // NOLINT
-template <typename... Args>
-struct is_variant<std::variant<Args...>> : std::true_type {}; // NOLINT
 
 template <typename T>
 inline typename std::enable_if_t<!std::is_enum<T>::value && !std::is_pointer<T>::value && !is_jsb_object_v<T>, bool>
 sevalue_to_native(const se::Value & /*from*/, T * /*to*/, se::Object * /*unused*/) { // NOLINT(readability-identifier-naming)
     SE_LOGE("Can not convert type ???\n - [[ %s ]]\n", typeid(T).name());
-    CC_STATIC_ASSERT(!is_variant<T>::value, "should not match std::variant");
+//    CC_STATIC_ASSERT(!is_variant<T>::value, "should not match std::variant");
     CC_STATIC_ASSERT((std::is_same<T, void>::value), "sevalue_to_native not implemented for T");
     return false;
 }
@@ -647,12 +636,7 @@ sevalue_to_native(const se::Value &from, T *to, se::Object *ctx) { // NOLINT(rea
 
 //////////////////////////////// forward declaration : sevalue_to_native ////////////////////////////////
 
-// std::variant<...>>ss
-template <typename... Args>
-bool sevalue_to_native(const se::Value &from, std::variant<Args...> *to, se::Object *ctx); // NOLINT(readability-identifier-naming)
 
-template <typename T>
-bool sevalue_to_native(const se::Value &from, std::optional<T> *to, se::Object *ctx); // NOLINT(readability-identifier-naming)
 /// std::unordered_map<std::string, V>
 template <typename V>
 bool sevalue_to_native(const se::Value &from, std::unordered_map<std::string, V> *to, se::Object *ctx); //NOLINT(readability-identifier-naming)
@@ -722,21 +706,6 @@ bool sevalue_to_native(const se::Value &from, std::array<uint8_t, CNT> *to, se::
         }
     } else {
         return false;
-    }
-    return true;
-}
-
-template <typename T>
-bool sevalue_to_native(const se::Value &from, std::variant<T, std::vector<T>> *to, se::Object *ctx) { // NOLINT
-    se::Object *array = from.toObject();
-    if (array->isArray()) {
-        std::vector<T> result;
-        sevalue_to_native(from, &result, ctx);
-        *to = std::move(result);
-    } else {
-        T result;
-        sevalue_to_native(from, &result, ctx);
-        *to = result;
     }
     return true;
 }
@@ -857,12 +826,7 @@ inline bool sevalue_to_native(const se::Value &from, std::function<R(Args...)> *
 
 //////////////////////// std::variant
 
-template <typename... Args>
-inline bool sevalue_to_native(const se::Value & /*from*/, std::variant<Args...> * /*to*/, se::Object * /*ctx*/) { // NOLINT(readability-identifier-naming)
-    static_assert(sizeof...(Args) == 0, "should not pass variant from js -> native");
-    assert(false);
-    return false;
-}
+
 
 #if HAS_CONSTEXPR
 template <typename T, bool is_reference>
@@ -1053,23 +1017,7 @@ bool sevalue_to_native(const se::Value &from, std::unordered_map<std::string, V>
     return true;
 }
 
-///////////////// std::optional
-template <typename T>
-bool sevalue_to_native(const se::Value &from, std::optional<T> *to, se::Object *ctx) { //NOLINT
-    static_assert(!is_optional<T>::value, "bad match ?");
-    if (from.isNullOrUndefined()) {
-        to->reset();
-        return true;
-    }
-    T    tmp{};
-    bool ret = sevalue_to_native(from, &tmp, ctx);
-    if CC_CONSTEXPR (std::is_move_assignable<T>::value) {
-        *to = std::move(tmp);
-    } else {
-        *to = tmp;
-    }
-    return ret;
-}
+
 //////////////////////  shoter form
 template <typename T>
 inline bool sevalue_to_native(const se::Value &from, T &&to) { // NOLINT(readability-identifier-naming)
@@ -1082,14 +1030,6 @@ inline bool sevalue_to_native(const se::Value &from, T &&to) { // NOLINT(readabi
 
 template <typename T>
 inline bool nativevalue_to_se(T &&from, se::Value &to); // NOLINT(readability-identifier-naming)
-
-template <typename... ARGS>
-bool nativevalue_to_se(const std::variant<ARGS...> &from, se::Value &to, se::Object *ctx); // NOLINT
-
-template <typename... ARGS>
-bool nativevalue_to_se(const std::variant<ARGS...> *from, se::Value &to, se::Object *ctx) { // NOLINT
-    return nativevalue_to_se(*from, to, ctx);
-}
 
 #if HAS_CONSTEXPR
 
@@ -1164,15 +1104,6 @@ inline bool nativevalue_to_se(const std::vector<T, A> &from, se::Value &to, se::
 template <typename K, typename V>
 inline bool nativevalue_to_se(const std::unordered_map<K, V> &from, se::Value &to, se::Object *ctx); // NOLINT
 
-/// nativevalue_to_se std::optional
-template <typename T>
-bool nativevalue_to_se(const std::optional<T> &from, se::Value &to, se::Object *ctx) { // NOLINT
-    if (!from.has_value()) {
-        to.setUndefined();
-        return true;
-    }
-    return nativevalue_to_se(from.value(), to, ctx);
-}
 
 template <typename T, typename A>
 inline bool nativevalue_to_se(const std::vector<T, A> &from, se::Value &to, se::Object *ctx) { // NOLINT(readability-identifier-naming)
@@ -1363,17 +1294,6 @@ bool sevalue_to_native(const se::Value &v, spine::Vector<T *> *ret, se::Object *
 template <typename T>
 inline bool nativevalue_to_se(T &&from, se::Value &to) { // NOLINT(readability-identifier-naming)
     return nativevalue_to_se(std::forward<typename std::add_const<T>::type>(from), to, nullptr);
-}
-
-template <typename... ARGS>
-bool nativevalue_to_se(const std::variant<ARGS...> &from, se::Value &to, se::Object *ctx) { // NOLINT(readability-identifier-naming)
-    bool ok = false;
-    std::visit(
-        [&](auto param) {
-            ok = nativevalue_to_se(param, to, ctx);
-        },
-        from);
-    return ok;
 }
 
 template <typename T>
